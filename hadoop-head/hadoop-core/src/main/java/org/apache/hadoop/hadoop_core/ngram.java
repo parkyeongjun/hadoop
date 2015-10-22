@@ -14,7 +14,7 @@ import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.util.GenericOptionsParser;
 
-public class XmlDriver {
+public class ngram {
 
 public static class TokenizerMapper
    extends Mapper<Object, Text, Text, IntWritable>{
@@ -25,13 +25,13 @@ String art_no_t ="";
 
 String year_t="";
 String b="";
-int ngram =  4 ;////////////////////////////////select ngram
+int ngram =  1 ;////////////////////////////////select ngram
 String before[] = {"","",""};
 public void map(Object key, Text value, Context context
                 ) throws IOException, InterruptedException {
 
 
-  StringTokenizer itr = new StringTokenizer(value.toString().toLowerCase(),"\n\t�� ");
+  StringTokenizer itr = new StringTokenizer(value.toString().toLowerCase(),"\n\tㅁ ");
   while(itr.hasMoreTokens())
   {
      String a=itr.nextToken();
@@ -72,9 +72,9 @@ public void map(Object key, Text value, Context context
         int n = test.length;
         //////////////////////////////////
                
-        if(b.contains("yearck") == false && a.contains("artnck") == false && b.equals("") == false && n == ngram)
+        if(b.contains("http://") == false && b.contains("yearck") == false && a.contains("artnck") == false && b.equals("") == false && n == ngram)
         {
-        	word.set(b + "\t" +art_no_t);
+        	word.set(year_t+"\t"+b + "\t" +art_no_t);
 
         	context.write(word, one);}
         
@@ -82,7 +82,7 @@ public void map(Object key, Text value, Context context
   }
 }
 
-public static class IntSumReducer
+public static class IntSumcom
    extends Reducer<Text,IntWritable,Text,IntWritable> {
 private IntWritable result = new IntWritable();
 
@@ -97,6 +97,47 @@ public void reduce(Text key, Iterable<IntWritable> values,
   context.write(key, result);
   }
 }
+public static class IntSumReducer
+extends Reducer<Text,IntWritable,Text,IntWritable> {
+private IntWritable result = new IntWritable();
+String[] before = {"","",""};
+String[] after = {"","",""};
+int start=0; int yearcount=0; int volcount=1;
+
+
+public void reduce(Text key, Iterable<IntWritable> values,
+                Context context
+                ) throws IOException, InterruptedException {
+		after = key.toString().split("\t");
+	  int value = 0;
+	  after[2] = Integer.toString(value);
+	  for (IntWritable val : values) {
+	    value+=val.get();
+	    } // value값을 받아온것일뿐.
+	  
+		if((after[0]+after[1]).equals(after[0]+before[1]))
+		{
+			yearcount = yearcount + value;
+			volcount ++;
+		}
+		else if(start!=0)
+		{
+			key = new Text(before[0]+"\t"+before[1]+"\t"+yearcount);
+			result.set(volcount);
+			context.write(key, result);
+			yearcount=0;
+			volcount = 1;
+			yearcount = yearcount + value;
+		}
+		else{
+			yearcount = yearcount + value;
+		}
+		before = after;
+		start++;
+		
+		
+	}
+}
 
 public static void main(String[] args) throws Exception {
 Configuration conf = new Configuration();
@@ -106,11 +147,12 @@ if (otherArgs.length != 2) {
   System.exit(2);
     }
 Job job = new Job(conf, "word count");
-job.setJarByClass(XmlDriver.class);
+job.setJarByClass(ngram.class);
 job.setMapperClass(TokenizerMapper.class);
-job.setCombinerClass(IntSumReducer.class);
+//job.setCombinerClass(IntSumReducer.class);
 job.setReducerClass(IntSumReducer.class);
 job.setOutputKeyClass(Text.class);
+job.setCombinerClass(IntSumcom.class);
 job.setOutputValueClass(IntWritable.class);
 FileInputFormat.addInputPath(job, new Path(otherArgs[0]));
 FileOutputFormat.setOutputPath(job, new Path(otherArgs[1]));
