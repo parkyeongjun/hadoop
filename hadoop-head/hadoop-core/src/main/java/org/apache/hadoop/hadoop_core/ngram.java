@@ -15,17 +15,16 @@ import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.util.GenericOptionsParser;
 
 public class ngram {
-
 public static class TokenizerMapper
    extends Mapper<Object, Text, Text, IntWritable>{
 
 private final static IntWritable one = new IntWritable(1);
 private Text word = new Text();
 String art_no_t ="";
-
+int ngram = 1;
 String year_t="";
 String b="";
-int ngram =  1 ;////////////////////////////////select ngram
+//int ngram =  1 ;////////////////////////////////select ngram
 String before[] = {"","",""};
 public void map(Object key, Text value, Context context
                 ) throws IOException, InterruptedException {
@@ -148,8 +147,9 @@ if (otherArgs.length != 2) {
     }
 Job job = new Job(conf, "word count");
 job.setJarByClass(ngram.class);
+job.setNumReduceTasks(20); // 2 reducers
+//job.setNumMapTasks(5); // 5 mappers
 job.setMapperClass(TokenizerMapper.class);
-//job.setCombinerClass(IntSumReducer.class);
 job.setReducerClass(IntSumReducer.class);
 job.setOutputKeyClass(Text.class);
 job.setCombinerClass(IntSumcom.class);
