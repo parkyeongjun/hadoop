@@ -2,9 +2,10 @@ package org.apache.hadoop.hadoop_core;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.StringTokenizer;
-
+import java.math.BigInteger;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.IntWritable;
@@ -16,6 +17,7 @@ import org.apache.hadoop.mapreduce.Reducer.Context;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.util.GenericOptionsParser;
+import edu.stanford.nlp.pipeline.TokenizerAnnotator;
 
 public class cooccur {
 	public static void main(String[] args) throws Exception {
@@ -28,11 +30,11 @@ public class cooccur {
 		Job job = new Job(conf, "word count");
 		job.setJarByClass(cooccur.class);
 		job.setMapperClass(TokenizerMapper.class);
+//		job.setReducerClass(IntSumcom.class);
 		job.setCombinerClass(IntSumcom.class);
-		job.setReducerClass(IntSumcom.class);
+		job.setReducerClass(IntSumReducer.class);
 		job.setOutputKeyClass(Text.class);
 		job.setOutputValueClass(IntWritable.class);
-		job.setNumReduceTasks(2); // 2 reducers
 		FileInputFormat.addInputPath(job, new Path(otherArgs[0]));
 		FileOutputFormat.setOutputPath(job, new Path(otherArgs[1]));
 		System.exit(job.waitForCompletion(true) ? 0 : 1);
@@ -55,12 +57,17 @@ public void map(Object key, Text value, Context context) throws IOException, Int
 
 	int W_S = 10 ; //윈도우 사이즈
 	List<Object> words= new ArrayList<Object>();
-  StringTokenizer itr = new StringTokenizer(value.toString().toLowerCase(),"\n\t,.()'\"-]*;ㅁ ");
-  while(itr.hasMoreTokens()){
+	TokenizerAnnotator itr = new TokenizerAnnotator(value.toString().toLowerCase());
+	String all = itr.toString();
+	StringTokenizer itr1 = new StringTokenizer(all.toLowerCase(),"1234567890\n\t,.()'\"-]*;ㅁ ");
+
+  while(itr1.hasMoreTokens()){
       String match = "[^\uAC00-\uD7A3xfe0-9a-zA-Z\\s]"; // 유효성검사
-      String a = itr.nextToken().replaceAll(match, "");
+      String a = itr1.nextToken().replaceAll(match, "");
 	  if(a.contains("yearck") == false && a.contains("artnck") ==false)
       words.add(a); //워드리스트에 단어별로 싹다넣는다.
+	  word.set("*\t"+a);
+	  context.write(word, one);
   }
   
   for(int i = 0 ; i < words.size() ; i++)
@@ -81,8 +88,9 @@ public void map(Object key, Text value, Context context) throws IOException, Int
 	  }
 	  if (sum>0)
 	  {
-		  //word.set(words.get(i)+"\t*\t"+sum);
-		  //context.write(word, one);////////////////////
+//		  word.set(words.get(i)+"\t*\t"+sum);
+//		  word.set("*\t"+words.get(i)+"\t"+sum);
+//		  context.write(word, one);////////////////////
 	  }
   }
   }
@@ -102,63 +110,122 @@ for (IntWritable val : values) {
 	context.write(key, result);
 	}
 }
-//public static class IntSumReducer
-//   extends Reducer<Text,IntWritable,Text,IntWritable> {
-//private IntWritable result = new IntWritable();
-//private int word1_sum=0;
-//private int key_count = 0;
-//private String prev_key = "null";
-////public void reduce(Text keyin, Iterable<IntWritable> values,
-////                   Context context
-////                   ) throws IOException, InterruptedException, ArrayIndexOutOfBoundsException {
-////
-////	String []temp = (keyin.toString()).split("\t");
-////	String word1 = temp[0];
-////	String word2 = temp[1];
-////	int val = Integer.parseInt(temp[2]);
-////
-////	String key = word1 +"\t"+ word2;
-////	double hybrid_f = 0.0;
-////	
-////
-////	
-////	if(prev_key.equals(key) == false) // 현재키가 이전키와 같이 아나면
-////	{
-////		if(prev_key.equals("null")==false) // 이전키가 존재한다면 (처음빼고는 다존재함)
-////		{
-////			String temp1[] = prev_key.split("\t");                
-////			word1 = temp1[0]; //이전키를 삽입
-////			word2 = temp1[1];
-////			if(word2.equals("*")) // 이전키가 총합 키라면 
-////			{
-////				word1_sum = key_count;  //이전키의 키카운터를 word1의 총합으로 생각
-////				result.set(word1_sum);
-////				keyin = new Text(word1+"\t"+word2);
-////				//context.write(keyin, result); // 총합키 출력( 가을하늘	*	9) 이런것만 출력되는부분
-////			}
-////			else if(key_count >= 1) // 이전키의 키카운터가 존재한다면 (keycount는 이전 값을 담고있다.) 
-////			{
-////				hybrid_f = (key_count) * (100 * key_count/word1_sum);
-////				keyin = new Text(word1+"\t"+word2);
-////				result.set((int)hybrid_f);
-////				context.write(keyin, result);
-////			}
-////		}
-////		key_count = val; // 현재 val값을 넣는다 다음 포문에서 이전값으로 참조하기위해서
-////		prev_key = key; //현재 키값이 이전키값으로 간다.
-////	}
-////	else // 이전키와 현재 키가 같다면
-////	{
-////		key_count = key_count+val;
-////	}
-//////	String temp2[] = prev_key.split("\t"); 
-//////	if(temp2.length == 2){word1 = temp2[0];word2 = temp2[1];}
-//////	if (key_count>=0)
-//////	{
-//////		keyin = new Text(word1 + "\t"+word2 +"\t"+key_count+"\t"+(float)(key_count)/word1_sum);
-//////		result.set(word1_sum);
-//////		context.write(keyin, result);
-//////	}
-////  }
-//}
+public static double logB(double x, double base) {
+    return Math.log(x) / Math.log(base);
+  }
+
+public static class IntSumReducer
+extends Reducer<Text,IntWritable,Text,IntWritable> {
+private IntWritable result = new IntWritable();
+String wordsum[]= new String[50000000];
+int count = 0;
+public void reduce(Text keyin, Iterable<IntWritable> values,
+              Context context
+              ) throws IOException, InterruptedException, ArrayIndexOutOfBoundsException {
+int sum=0;
+	for (IntWritable val : values) {
+		sum+=val.get();
+		}
+   String []temp = (keyin.toString()).split("\t");// 키인을 탬프에 넣어서 word1 word2 value로 나눔
+if(temp.length == 2){
+	
+String word1 = temp[0]; //* // 가을하늘
+String word2 = temp[1]; //충성을 // 공활한데
+int i1 = 0;
+int i2 = 0;
+int a1=0;
+int a2=0;
+int value = sum; //1 //3 이런식으로들어감
+
+//////////////////////////////////해쉬함수/////////////////////////
+int adress = 0;
+for(int i = 0 ; i < word1.length() ; i++) // 단어의 개수만큼 돈다
+{
+		int c = word1.charAt(i);
+		c = c - 85;
+			if(i %2 == 0)
+			{
+				adress= adress + c*100;
+			}
+			else adress= adress + c;
+		
+}
+a1 = adress % 50000000;
+adress=0;
+for(int i = 0 ; i < word2.length() ; i++) // 단어의 개수만큼 돈다
+{
+		int c = word2.charAt(i);
+		c = c - 85;
+			if(i %2 == 0)
+			{
+				adress= adress + c*100;
+			}
+			else adress = adress + c;
+		
+}
+//////////////////////////////////해쉬함수/////////////////////////
+a2 = adress%50000000;
+
+
+if(word1.equals("*") ) // 각토큰의 빈도수를 wordsum에 저장 wordval에 빈도수저장.
+{
+	
+	if(wordsum[a2] == null)
+		wordsum[a2] = word2+"\t"+value+"\t";
+	else
+		wordsum[a2] = wordsum[a2] + word2+"\t"+value+"\t";// 충성을 
+	
+	count = count + value;
+}
+else if( wordsum[a2] != null &&  wordsum[a1] != null )
+{
+	/////////////해쉬주소로 배열에서 원하는값 찾는 부분////////////
+	String []temp1 = wordsum[a1].split("\t");
+	for(int i = 0 ; i < temp1.length ; i = i+2)
+	{
+		if(temp1[i].equals(word1))
+		{i1 = i;
+			break;
+		}
+	}
+	String []temp2 = wordsum[a2].split("\t");
+	for(int i = 0 ; i < temp2.length ; i = i+2)
+	{
+		if(temp2[i].equals(word2))
+		{
+			i2 = i;
+			break;
+		}
+	}
+	
+	int word1_val = Integer.parseInt(temp1[i1+1]); // P(word1) // 워드1의 확률
+	int word2_val = Integer.parseInt(temp2[i2+1]);// P(word2) // 워드2의 확률
+	
+	/////////////해쉬주소로 배열에서 원하는값 찾는 부분////////////
+   BigInteger big = new BigInteger("1"); // 숫자가 너무 크므로 빅인테져에 답는다
+   
+   ///////////////////////////pmi 구하는 공식////////////////////
+   big = big.multiply(BigInteger.valueOf(value));
+   big = big.multiply(BigInteger.valueOf(count));
+   big = big.multiply(BigInteger.valueOf(100));
+   big = big.divide(BigInteger.valueOf(word1_val));
+   big = big.divide(BigInteger.valueOf(word2_val));
+   ///////////////////////////////////////////////////////////
+   String big_to_string = ""+big; // 빅을 더블로 바꿔준다 빅인테져는 바로 더블에 못담으므로 스트링을 한번 거친다
+   
+   if (big_to_string.length() > 4){
+	   big_to_string = big_to_string.substring(0, 4);
+   }
+   double pmi = Double.parseDouble(big_to_string); // 더블에 담는다
+   pmi = pmi / 100;
+   pmi = Math.log(pmi)/Math.log(2.0); //밑이2인 로그를만들기위해
+   //keyin = new Text("count : " +count+"\tvalue:"+value+"\tpmi:"+pmi +"\t" + word1_val +"\tword2 : " + word2 +"\t"+ word2_val+"\t"+wordsum[a2]);
+   keyin = new Text( word1 +"\t"+ word2+"\t"+pmi);
+
+   context.write(keyin, result);
+}
+}
+}
+}
+
 }
