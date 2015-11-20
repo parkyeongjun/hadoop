@@ -17,7 +17,6 @@ import org.apache.hadoop.mapreduce.Reducer.Context;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.util.GenericOptionsParser;
-import edu.stanford.nlp.pipeline.TokenizerAnnotator;
 
 public class cooccur {
 	public static void main(String[] args) throws Exception {
@@ -57,9 +56,7 @@ public void map(Object key, Text value, Context context) throws IOException, Int
 
 	int W_S = 10 ; //윈도우 사이즈
 	List<Object> words= new ArrayList<Object>();
-	TokenizerAnnotator itr = new TokenizerAnnotator(value.toString().toLowerCase());
-	String all = itr.toString();
-	StringTokenizer itr1 = new StringTokenizer(all.toLowerCase(),"1234567890\n\t,.()'\"-]*;ㅁ ");
+	StringTokenizer itr1 = new StringTokenizer(value.toString().toLowerCase(),"1234567890\n\t,.()'\"-]*;ㅁ ");
 
   while(itr1.hasMoreTokens()){
       String match = "[^\uAC00-\uD7A3xfe0-9a-zA-Z\\s]"; // 유효성검사
@@ -229,3 +226,4 @@ else if( wordsum[a2] != null &&  wordsum[a1] != null )
 }
 
 }
+
